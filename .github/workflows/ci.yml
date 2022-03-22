@@ -28,78 +28,21 @@ jobs:
       - name: Check out
         uses: actions/checkout@v2.4.0
 
-      - name: Cache Node modules
-        uses: actions/cache@v2.1.7
-        env:
-          cache-name: cache-node-modules
-        with:
-          # npm cache files are stored in `~/.npm` on Linux/macOS
-          path: ~/.npm
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Set up Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 14
-
-      - name: Install dependencies
-        run: npm install -g npm@7 lerna && lerna bootstrap --hoist
-
-      - name: Test
-        run: lerna run test-cov
-
-      - name: Run Jenkins server
-        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }} # Skip PRs
-        run: |
-          mkdir -p ${{ github.workspace }}/sources/jenkins-source/test_files/jenkins/data/secrets/
-          docker run -d -u 0 -i --name jenkins -p 8080:8080 -p 50000:50000 -v ${{ github.workspace }}/sources/jenkins-source/test_files/jenkins/data:/var/jenkins_home jenkins/jenkins:lts-jdk11
-          echo "Waiting until Jenkins is up"
-          waiting=0
-          until curl -s -I -X GET http://127.0.0.1:8080; do
-            docker ps -a
-            let waiting+=3
-            sleep 3
-            if [ $waiting -eq 120 ]; then
-              echo "Jenkins server did not respond within 120 seconds"
-              exit 42
-            fi
-          done
-          sudo chown -R $USER:$USER ${{ github.workspace }}/sources/jenkins-source/test_files/jenkins/data
-
       - name: Source Acceptance Test
         if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }} # Skip PRs
         env:
-          AGILEACCELERATOR_SOURCE_TEST_CONFIG: ${{ secrets.AGILEACCELERATOR_SOURCE_TEST_CONFIG }}
-          BACKLOG_SOURCE_TEST_CONFIG: ${{ secrets.BACKLOG_SOURCE_TEST_CONFIG }}
-          BITBUCKET_SOURCE_TEST_CONFIG: ${{ secrets.BITBUCKET_SOURCE_TEST_CONFIG }}
-          CUSTOMER_IO_SOURCE_TEST_CONFIG: ${{ secrets.CUSTOMER_IO_SOURCE_TEST_CONFIG }}
-          DOCKER_SOURCE_TEST_CONFIG: ${{ secrets.DOCKER_SOURCE_TEST_CONFIG }}
-          GOOGLECALENDAR_SOURCE_TEST_CONFIG: ${{ secrets.GOOGLECALENDAR_SOURCE_TEST_CONFIG }}
           HARNESS_SOURCE_TEST_CONFIG: ${{ secrets.HARNESS_SOURCE_TEST_CONFIG }}
           PAGERDUTY_SOURCE_TEST_CONFIG: ${{ secrets.PAGERDUTY_SOURCE_TEST_CONFIG }}
-          SHORTCUT_SOURCE_TEST_CONFIG: ${{ secrets.SHORTCUT_SOURCE_TEST_CONFIG }}
-          SQUADCAST_SOURCE_TEST_CONFIG: ${{ secrets.SQUADCAST_SOURCE_TEST_CONFIG }}
-          STATUSPAGE_SOURCE_TEST_CONFIG: ${{ secrets.STATUSPAGE_SOURCE_TEST_CONFIG }}
         run: |
           for i in $(ls -d sources/*/)
           do
             source=$(echo $i | cut -f2 -d'/')
             case "$source" in
-              datadog-source|harness-source|jenkins-source|okta-source|phabricator-source|squadcast-source|victorops-source)
-                echo "Skipping $source acceptance tests"
+              harness-source|pagerduty-source)
+                ./scripts/source-acceptance-test.sh $source
                 ;;
               *)
-                ./scripts/source-acceptance-test.sh $source
+                echo "Skipping $source acceptance tests"
                 ;;
             esac
           done
-
-      - name: Stop Jenkins server
-        if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }} # Skip PRs
-        run: |
-          docker stop jenkins
-          docker rm jenkins
