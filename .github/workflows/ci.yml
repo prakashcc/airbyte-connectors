@@ -31,14 +31,13 @@ jobs:
       - name: Source Acceptance Test
         if: ${{ github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' }} # Skip PRs
         env:
-          HARNESS_SOURCE_TEST_CONFIG: ${{ secrets.HARNESS_SOURCE_TEST_CONFIG }}
           PAGERDUTY_SOURCE_TEST_CONFIG: ${{ secrets.PAGERDUTY_SOURCE_TEST_CONFIG }}
         run: |
           for i in $(ls -d sources/*/)
           do
             source=$(echo $i | cut -f2 -d'/')
             case "$source" in
-              harness-source|pagerduty-source)
+              pagerduty-source)
                 ./scripts/source-acceptance-test.sh $source
                 ;;
               *)

